@@ -979,11 +979,8 @@ body.present .list-head h2 { font-size: 14px; }
 
     // ときどき出る特別演出
     let tag = "";
+    // 番号による飾りの表示（ゾロ目など）は出さず、順位に応じた表示だけにする
     if (prize.rank === 1) tag = "GRAND PRIZE!!";
-    else if (num === N && N >= 10) tag = `LAST ${N}!!`;
-    else if (num === 77) tag = "LUCKY 77!!";
-    else if (num === 7) tag = "LUCKY 7!";
-    else if (num % 11 === 0) tag = "ゾロ目！";
     else if (prize.rank <= 3) tag = "TOP 3!";
     const tagEl = document.getElementById("revealTag");
     tagEl.textContent = tag;
