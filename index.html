@@ -564,6 +564,9 @@ body.present .list-head h2 { font-size: 14px; }
     if (r && r.names && typeof r.names === "object") { roster = r.names; rosterFile = String(r.file || ""); }
   } catch (e) {}
   const whoOf = num => (num != null && Object.prototype.hasOwnProperty.call(roster, num)) ? String(roster[num]) : "";
+  const hasRoster = () => Object.keys(roster).length > 0;
+  // 名簿の人数（＝名簿にある最大の番号）。番号が1から順に並んでいれば名簿の人数と同じになる
+  const rosterPeople = () => Math.min(MAX_PEOPLE, Math.max(MIN_PEOPLE, ...Object.keys(roster).map(Number)));
   try {
     const s = JSON.parse(localStorage.getItem(STORE) || "null");
     if (s) {
@@ -1168,8 +1171,9 @@ body.present .list-head h2 { font-size: 14px; }
   function setPrizeTools() {
     const locked = busy() || spinning || beatTimer;
     loadBtn.disabled = locked; dummyBtn.disabled = locked || isDummy; orderBtn.disabled = locked;
-    peopleInput.disabled = locked;
-    peopleInput.title = locked ? "抽選の途中は変更できません。リセットしてから変更してください" : "";
+    peopleInput.disabled = locked || hasRoster();
+    peopleInput.title = hasRoster() ? "名簿を読み込んでいる間は、参加人数を名簿に合わせます（変えるときは「名簿を外す」）"
+      : locked ? "抽選の途中は変更できません。リセットしてから変更してください" : "";
     orderBtn.textContent = order === "top" ? "順番：1位から" : "順番：下位から";
     loadBtn.title = locked ? "抽選の途中は変更できません。リセットしてから操作してください" : "";
   }
@@ -1286,13 +1290,23 @@ body.present .list-head h2 { font-size: 14px; }
     const n = Object.keys(roster).length;
     rosterClear.hidden = !n;
     document.getElementById("rosterBtn").textContent = n ? "名簿を読み直す" : "名簿を読み込む（任意）";
-    const outside = Object.keys(roster).filter(k => +k > N).length;
-    const text = note || (n ? `名簿：${n}人分（${rosterFile}）。当選番号に名前を添えて表示します。名簿はこの端末の中だけで使い、送信しません` +
-      (outside ? `　※参加人数（${N}人）より大きい番号が${outside}件あります` : "") : "");
+    const t = n ? rosterPeople() : 0;
+    const gaps = n ? t - Object.keys(roster).filter(k => +k <= t).length : 0;
+    const text = note || (n ? `名簿：${n}人分（${rosterFile}）。参加人数を名簿に合わせ、当選番号に名前を添えて表示します。名簿はこの端末の中だけで使い、送信しません` +
+      (t !== N ? `　※抽選の途中なので、参加人数は${N}人のままです。リセットすると名簿の${t}人に合わせます` : "") +
+      (gaps > 0 ? `　※1〜${t}番のうち${gaps}件は名簿に名前がありません（その番号も抽選の対象です）` : "") : "");
     rosterMsg.hidden = !text;
     rosterMsg.textContent = text;
     rosterMsg.classList.toggle("load-msg", !!isError);
     rosterMsg.classList.toggle("error", !!isError);
+  }
+  // 名簿があるときは、参加人数を名簿の人数に合わせる（抽選の途中はルーレットを変えられないので、リセット時に合わせる）
+  function syncPeopleToRoster() {
+    if (!hasRoster()) return;
+    const t = rosterPeople();
+    if (t === N || busy() || spinning || beatTimer) return;
+    N = t;
+    save(); rebuildWheel();
   }
   async function loadRoster(file) {
     if (typeof XLSX === "undefined") { renderRoster("名簿を読む部品を読み込めませんでした。ページを再読み込みしてください。", true); return; }
@@ -1300,7 +1314,7 @@ body.present .list-head h2 { font-size: 14px; }
       const { names, count, dup } = parseRoster(await readRows(file));
       if (!count) { renderRoster("名簿が見つかりませんでした。A列に番号、B列に名前を入れたCSVを選んでください。", true); return; }
       roster = names; rosterFile = file.name;
-      saveRoster(); renderSide(); if (!resultEl.hidden) showResult();
+      saveRoster(); syncPeopleToRoster(); renderSide(); if (!resultEl.hidden) showResult();
       renderRoster(dup ? `名簿：${count}人分を読み込みました（同じ番号が${dup}件あったので、後の行の名前を使います）。この端末の中だけで使い、送信しません` : "");
     } catch (e) {
       renderRoster("名簿を読み込めませんでした。CSV（または.xlsx）のファイルか確認してください。", true);
@@ -1318,8 +1332,10 @@ body.present .list-head h2 { font-size: 14px; }
     peopleInput.value = N;
     document.getElementById("peopleMax").textContent = N;
     canvas.setAttribute("aria-label", `1から${N}のルーレット`);
-    document.getElementById("peopleNote").textContent = prizes.length > N
-      ? `景品${prizes.length}件のうち、上位${N}件だけ抽選します` : "";
+    const notes = [];
+    if (hasRoster()) notes.push(rosterPeople() === N ? "名簿に合わせています" : `名簿は${rosterPeople()}人です（リセットすると名簿の人数に合わせます）`);
+    if (prizes.length > N) notes.push(`景品${prizes.length}件のうち、上位${N}件だけ抽選します`);
+    document.getElementById("peopleNote").textContent = notes.join("／");
   }
   function applyPeople() {
     if (busy() || spinning || beatTimer) { renderPeople(); return; }
@@ -1356,7 +1372,7 @@ body.present .list-head h2 { font-size: 14px; }
   document.getElementById("cancelReset").addEventListener("click", () => { confirmEl.hidden = true; });
   document.getElementById("doReset").addEventListener("click", () => {
     confirmEl.hidden = true; reveal.hidden = true; resultEl.hidden = true; pending = null; winIdx = -1;
-    wins = {}; drawOrder = []; absent = []; save(); rebuildWheel(); renderSide();
+    wins = {}; drawOrder = []; absent = []; save(); syncPeopleToRoster(); rebuildWheel(); renderSide();
   });
 
   // ---------- 回し直し（当選者がいないとき） ----------
@@ -1441,6 +1457,7 @@ body.present .list-head h2 { font-size: 14px; }
   addEventListener("resize", () => { layoutWheel(); fitNextName(); layoutList(); });
 
   if (!isDummy) setMsg(`読み込んだ景品 ${prizes.length}件を表示しています`);
+  syncPeopleToRoster();
   rebuildWheel();
   renderSound();
   renderSide();
