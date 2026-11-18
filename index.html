@@ -580,7 +580,10 @@ body.present .list-head h2 { font-size: 14px; }
       } else if (Array.isArray(s.drawn)) legacyDrawn = s.drawn.filter(n => n >= 1 && n <= N);
     }
   } catch (e) {}
-  const total = () => Math.min(prizes.length, N);
+  // 抽選の対象になる番号：名簿があれば名簿にある番号だけ、なければ 1〜参加人数 すべて
+  const inPool = n => n >= 1 && n <= N && (!hasRoster() || Object.prototype.hasOwnProperty.call(roster, n));
+  const poolSize = () => hasRoster() ? Object.keys(roster).filter(k => +k <= N).length : N;
+  const total = () => Math.min(prizes.length, poolSize());
   // 抽選順で j 番目に回す景品の添字
   const seqIndex = j => order === "top" ? j : total() - 1 - j;
   if (legacyDrawn) legacyDrawn.slice(0, total()).forEach((num, k) => { const i = seqIndex(k); wins[i] = num; drawOrder.push(i); });
@@ -615,7 +618,7 @@ body.present .list-head h2 { font-size: 14px; }
   function rebuildWheel() {
     const set = new Set([...Object.values(wins), ...absent]);
     wheelNums = [];
-    for (let n = 1; n <= N; n++) if (!set.has(n)) wheelNums.push(n);
+    for (let n = 1; n <= N; n++) if (!set.has(n) && inPool(n)) wheelNums.push(n);
     // 同じ色が固まらないよう、見た目用に並びを混ぜる（抽選結果には影響しない）
     for (let i = wheelNums.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [wheelNums[i], wheelNums[j]] = [wheelNums[j], wheelNums[i]]; }
   }
@@ -1109,7 +1112,7 @@ body.present .list-head h2 { font-size: 14px; }
   }
   // PCでは景品一覧を2列にし、行の高さを枠いっぱいに合わせる
   function layoutList() {
-    const n = Math.min(prizes.length, N);
+    const n = total();
     // 列の数（PCは2列、スマホ横向きは1列）に合わせて行数を決める
     const cols = desktop() ? getComputedStyle(listEl).gridTemplateColumns.split(" ").filter(Boolean).length || 1 : 1;
     listEl.style.gridTemplateRows = desktop() ? `repeat(${Math.ceil(n / cols)}, minmax(32px, 1fr))` : "";
@@ -1294,7 +1297,7 @@ body.present .list-head h2 { font-size: 14px; }
     const gaps = n ? t - Object.keys(roster).filter(k => +k <= t).length : 0;
     const text = note || (n ? `名簿：${n}人分（${rosterFile}）。参加人数を名簿に合わせ、当選番号に名前を添えて表示します。名簿はこの端末の中だけで使い、送信しません` +
       (t !== N ? `　※抽選の途中なので、参加人数は${N}人のままです。リセットすると名簿の${t}人に合わせます` : "") +
-      (gaps > 0 ? `　※1〜${t}番のうち${gaps}件は名簿に名前がありません（その番号も抽選の対象です）` : "") : "");
+      (gaps > 0 ? `　※1〜${t}番のうち名簿にない${gaps}件の番号は、ルーレットに出しません` : "") : "");
     rosterMsg.hidden = !text;
     rosterMsg.textContent = text;
     rosterMsg.classList.toggle("load-msg", !!isError);
@@ -1309,12 +1312,13 @@ body.present .list-head h2 { font-size: 14px; }
     save(); rebuildWheel();
   }
   async function loadRoster(file) {
+    if (spinning || beatTimer) { renderRoster("ルーレットが回っている間は名簿を読み込めません。止まってから読み込んでください。", true); return; }
     if (typeof XLSX === "undefined") { renderRoster("名簿を読む部品を読み込めませんでした。ページを再読み込みしてください。", true); return; }
     try {
       const { names, count, dup } = parseRoster(await readRows(file));
       if (!count) { renderRoster("名簿が見つかりませんでした。A列に番号、B列に名前を入れたCSVを選んでください。", true); return; }
       roster = names; rosterFile = file.name;
-      saveRoster(); syncPeopleToRoster(); renderSide(); if (!resultEl.hidden) showResult();
+      saveRoster(); syncPeopleToRoster(); closeRevealIfOpen(); rebuildWheel(); renderSide(); if (!resultEl.hidden) showResult();
       renderRoster(dup ? `名簿：${count}人分を読み込みました（同じ番号が${dup}件あったので、後の行の名前を使います）。この端末の中だけで使い、送信しません` : "");
     } catch (e) {
       renderRoster("名簿を読み込めませんでした。CSV（または.xlsx）のファイルか確認してください。", true);
@@ -1322,7 +1326,13 @@ body.present .list-head h2 { font-size: 14px; }
   }
   document.getElementById("rosterBtn").addEventListener("click", () => rosterInput.click());
   rosterInput.addEventListener("change", () => { const f = rosterInput.files[0]; if (f) loadRoster(f); rosterInput.value = ""; });
-  rosterClear.addEventListener("click", () => { roster = {}; rosterFile = ""; saveRoster(); renderSide(); renderRoster("名簿を外しました（この端末からも削除しました）"); });
+  rosterClear.addEventListener("click", () => {
+    if (spinning || beatTimer) return;
+    roster = {}; rosterFile = ""; saveRoster(); closeRevealIfOpen(); rebuildWheel(); renderSide();
+    renderRoster("名簿を外しました（この端末からも削除しました）。ルーレットは 1〜参加人数 のすべての番号に戻ります");
+  });
+  // 当選画面を開いたまま名簿を変えたときは、先に閉じてルーレットを確定させる
+  function closeRevealIfOpen() { if (!reveal.hidden || pending !== null) closeReveal(); }
 
   loadBtn.addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", () => { const f = fileInput.files[0]; if (f) loadFile(f); fileInput.value = ""; });
@@ -1334,7 +1344,7 @@ body.present .list-head h2 { font-size: 14px; }
     canvas.setAttribute("aria-label", `1から${N}のルーレット`);
     const notes = [];
     if (hasRoster()) notes.push(rosterPeople() === N ? "名簿に合わせています" : `名簿は${rosterPeople()}人です（リセットすると名簿の人数に合わせます）`);
-    if (prizes.length > N) notes.push(`景品${prizes.length}件のうち、上位${N}件だけ抽選します`);
+    if (prizes.length > poolSize()) notes.push(`景品${prizes.length}件のうち、上位${poolSize()}件だけ抽選します`);
     document.getElementById("peopleNote").textContent = notes.join("／");
   }
   function applyPeople() {
