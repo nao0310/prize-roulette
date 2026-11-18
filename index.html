@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#170c2b">
 <title>景品ルーレット</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -302,7 +303,7 @@ body.tension .wheel-box { transform: scale(1.035); }
   .big-ball, .reveal-rank, .reveal-prize, .tag { animation-duration: .01s; animation-delay: 0s; }
 }
 /* PC：画面1枚に収める（ページ全体はスクロールしない） */
-@media (min-width: 901px) {
+@media (min-width: 901px), (orientation: landscape) and (min-width: 480px) and (max-height: 600px) {
   html, body { overflow: hidden; }
   .wrap { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); }
   .stage { min-height: 0; height: 100%; align-items: stretch; grid-template-columns: minmax(0, 1fr) minmax(0, min(780px, 46vw)); }
@@ -320,7 +321,7 @@ body.tension .wheel-box { transform: scale(1.035); }
   .prow .ball-sm, .prow .slot { width: 38px; height: 38px; font-size: 16px; }
   .prow .ball-sm.three { font-size: 12px; }
 }
-@media (min-width: 901px) and (max-height: 780px) {
+@media (min-width: 901px) and (max-height: 780px), (orientation: landscape) and (min-width: 480px) and (max-height: 600px) {
   .card { padding: 12px 14px; }
   .list-head { margin-bottom: 6px; }
   .people-row { margin-bottom: 6px; }
@@ -330,6 +331,60 @@ body.tension .wheel-box { transform: scale(1.035); }
   .prow .rk { font-size: 17px; }
   .prow .nm { font-size: 13px; line-height: 1.2; }
   .prow .ball-sm, .prow .slot { width: 30px; height: 30px; font-size: 13px; }
+}
+
+/* ---- スマホ縦向き：ヘッダーを詰めて、ロゴとボタンが重ならないようにする ---- */
+@media (max-width: 560px) {
+  /* ロゴとボタンを横に並べ、入りきらないボタンはロゴの下ではなく次の行に回す */
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; }
+  header .next-card { flex: 1 1 100%; }
+  .tools { justify-content: flex-end; }
+  .logo { font-size: 24px; }
+  .logo .sub { display: none; }
+  .tools { gap: 6px; }
+  .tools .chip { padding: 6px 10px; font-size: 12px; }
+  .next-card { padding: 6px 12px; gap: 10px; }
+  .next-rank { font-size: 34px; }
+  .spin-btn { padding: 10px 40px; }
+}
+/* タッチ操作の端末では「スペースキー」の説明は不要 */
+@media (pointer: coarse) { .hint { display: none; } }
+/* スマホでは当選画面の背景を濃くして、後ろの文字が透けないようにする */
+@media (max-width: 900px), (max-height: 600px) { .reveal { background: rgba(10, 4, 22, .97); overflow-y: auto; } }
+
+/* ---- スマホ横向き：ヘッダーを1行にし、当選画面はボールと文字を左右に並べる ---- */
+@media (orientation: landscape) and (min-width: 480px) and (max-height: 600px) {
+  body { padding-block: 6px 8px; }
+  .wrap { gap: 6px; }
+  header { grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; }
+  header .next-card { grid-column: auto; order: 0; }
+  .logo { font-size: 22px; }
+  .logo .sub { display: none; }
+  .tools { gap: 4px; flex-wrap: nowrap; }
+  .tools .chip { padding: 5px 9px; font-size: 11px; }
+  .next-card { padding: 4px 12px; gap: 10px; }
+  .next-card h2 { display: none; }
+  .next-rank { font-size: 26px; }
+  .stage { gap: 12px; grid-template-columns: minmax(0, 1fr) minmax(0, 52vw); }
+  .spin-btn { font-size: 18px; padding: 6px 28px; box-shadow: 0 4px 0 #b8801a; }
+  .card { padding: 8px 10px; }
+  .people-row input { font-size: 15px; width: 72px; }
+  .people-row, .list-head { font-size: 12px; }
+  .prize-list { grid-template-columns: minmax(0, 1fr); }
+  #loadMsg, #absentMsg { display: none !important; }
+  .reveal-inner {
+    grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "ball rank" "ball text";
+    column-gap: 24px; row-gap: 6px; align-items: center; max-width: 94vw;
+  }
+  .big-ball { grid-area: ball; width: min(72vh, 42vw); }
+  .big-ball .num { font-size: min(26vh, 15vw); }
+  .big-ball .num.three { font-size: min(17vh, 10vw); }
+  .reveal-rank { grid-area: rank; align-self: end; justify-self: start; font-size: 40px; }
+  .reveal-text { grid-area: text; align-self: start; justify-items: start; text-align: left; gap: 6px; }
+  .reveal-prize { font-size: 22px; }
+  .tag { font-size: 22px; }
+  .next-btn { padding: 8px 20px; font-size: 14px; }
+  .redo-btn { padding: 5px 14px; font-size: 12px; }
 }
 
 /* ---- 発表モード：設定用のボタンや入力欄を隠して、会場に映す画面をすっきりさせる ---- */
@@ -1027,7 +1082,9 @@ body.present .list-head h2 { font-size: 14px; }
   // PCでは景品一覧を2列にし、行の高さを枠いっぱいに合わせる
   function layoutList() {
     const n = Math.min(prizes.length, N);
-    listEl.style.gridTemplateRows = desktop() ? `repeat(${Math.ceil(n / 2)}, minmax(32px, 1fr))` : "";
+    // 列の数（PCは2列、スマホ横向きは1列）に合わせて行数を決める
+    const cols = desktop() ? getComputedStyle(listEl).gridTemplateColumns.split(" ").filter(Boolean).length || 1 : 1;
+    listEl.style.gridTemplateRows = desktop() ? `repeat(${Math.ceil(n / cols)}, minmax(32px, 1fr))` : "";
   }
 
   function renderSide() {
@@ -1241,7 +1298,8 @@ body.present .list-head h2 { font-size: 14px; }
 
   // PCでは、ルーレットを「列の幅」と「列の高さ−ボタン」の小さい方に合わせる
   const wheelCol = document.querySelector(".wheel-col");
-  const desktop = () => matchMedia("(min-width: 901px)").matches;
+  // PC、またはスマホの横向き：画面1枚に収める配置
+  const desktop = () => matchMedia("(min-width: 901px), (orientation: landscape) and (min-width: 480px) and (max-height: 600px)").matches;
   // ---------- 発表モード ----------
   const presentExit = document.getElementById("presentExit");
   function setPresent(on) {
@@ -1268,8 +1326,8 @@ body.present .list-head h2 { font-size: 14px; }
 
   function layoutWheel() {
     if (!desktop()) { box.style.width = ""; return; }
-    const h = wheelCol.clientHeight - spinBtn.offsetHeight - 14;
-    box.style.width = Math.max(240, Math.floor(Math.min(wheelCol.clientWidth, h))) + "px";
+    const h = wheelCol.clientHeight - spinBtn.offsetHeight - 36;   // ボタンの影と余白の分も空ける
+    box.style.width = Math.max(140, Math.floor(Math.min(wheelCol.clientWidth, h))) + "px";
   }
   new ResizeObserver(() => { layoutWheel(); fitNextName(); }).observe(wheelCol);
   addEventListener("resize", () => { layoutWheel(); fitNextName(); layoutList(); });
