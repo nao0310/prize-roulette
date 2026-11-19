@@ -1,6 +1,7 @@
 {
   "name": "景品ルーレット",
   "short_name": "景品ルーレット",
+  "lang": "ja",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#170c2b",
