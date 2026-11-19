@@ -655,8 +655,12 @@ body.present .list-head h2 { font-size: 14px; }
   let tension = false, lastBeat = 0, beatPulse = 0, beatTimer = null;
   let lastRot = 0, lastNow = 0, speed = 0;
   const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
-  // 最後の数マスをじわじわ進む時間が長くなる減速（5乗）
-  const easeOutQuint = t => 1 - Math.pow(1 - t, 5);
+  // 本回転の動き：はじめの3割は一定の速さで回り、そこから3乗のカーブで減速する（速さはつなぎ目で一致）。
+  // 5乗の減速だと前半で回転のほとんどを終えてしまい、後半の数秒がほぼ止まって見えたため、
+  // 最後まで動きを残しつつ、最後の1〜2マスはじわじわ進むようにしている
+  const CRUISE = 0.3, DECEL = 3, CRUISE_V = 1 / (CRUISE + (1 - CRUISE) / DECEL);
+  const easeSpin = t => t < CRUISE ? CRUISE_V * t
+    : CRUISE_V * CRUISE + CRUISE_V * (1 - CRUISE) / DECEL * (1 - Math.pow(1 - (t - CRUISE) / (1 - CRUISE), DECEL));
   const easeInOutSine = t => -(Math.cos(Math.PI * t) - 1) / 2;
   const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   let lastTickIdx = -1, kick = 0;
@@ -936,9 +940,9 @@ body.present .list-head h2 { font-size: 14px; }
   // ---------- 抽選 ----------
   const spinBtn = document.getElementById("spinBtn");
   /*
-    演出の流れ（合計 約10〜13秒、3位以上はさらに約2秒長い）
+    演出の流れ（11位以下は約6秒、4〜10位は約7.5秒、2・3位は約10.5秒、1位は約13秒）
      1. ため   : 少し逆回転して力をためる
-     2. 本回転 : 一気に加速し、最後の数秒はじわじわ1マスずつ進む
+     2. 本回転 : 一気に加速して一定の速さで回り、そこから減速して最後の1〜2マスはじわじわ進む
      3. 寸止め : 4割は「当たりのマスにギリギリ入って」止まる
      4. 一拍   : 止まってから0.65秒の沈黙のあと発表
   */
@@ -964,14 +968,14 @@ body.present .list-head h2 { font-size: 14px; }
                   : np.rank <= 3 ? 9000 + rand() * 1000
                   : np.rank <= 10 ? 6500 + rand() * 800
                   : 5000 + rand() * 700;
-    const turns = reduced ? 1 : Math.max(3, Math.round(mainDur / 1400));
+    const turns = reduced ? 1 : Math.max(5, Math.round(mainDur / 700));
     const landRot = r0 + mod(land - r0, TAU) + TAU * turns;
 
     phases = [];
     if (reduced) {
       phases.push({ from: r0, to: landRot, dur: 1500, ease: easeOutQuart, kind: "main" });
     } else {
-      const back = r0 - seg * 1.2 - 0.15;
+      const back = r0 - Math.min(seg * 1.2, 0.35) - 0.15;   // 人数が少なくマスが大きいときも、逆回転は少しだけにする
       phases.push({ from: r0, to: back, dur: top3 ? 700 : 450, ease: easeInOutSine, kind: "windup" });
       if (fake) {
         const over = landRot + (1 - f + 0.2 + rand() * 0.15) * seg;
@@ -979,7 +983,7 @@ body.present .list-head h2 { font-size: 14px; }
         phases.push({ from: over, to: over, dur: 750, ease: t => t, kind: "hold" });
         phases.push({ from: over, to: landRot, dur: 1400, ease: easeInOutCubic, kind: "back" });
       } else {
-        phases.push({ from: back, to: landRot, dur: mainDur, ease: easeOutQuint, kind: "main" });
+        phases.push({ from: back, to: landRot, dur: mainDur, ease: easeSpin, kind: "main" });
       }
     }
     phaseIdx = 0; phaseStart = performance.now(); lastNow = phaseStart; lastRot = r0;
@@ -1475,7 +1479,7 @@ body.present .list-head h2 { font-size: 14px; }
   canvas.addEventListener("click", spin);
   document.addEventListener("keydown", e => {
     if ((e.code === "Space" || e.code === "Enter") && !e.target.closest("button, input")) { e.preventDefault(); spin(); }
-    if (e.code === "Escape") { if (!redoEl.hidden) redoEl.hidden = true; else if (!confirmEl.hidden) confirmEl.hidden = true; else if (!resultEl.hidden) resultEl.hidden = true; else if (!reveal.hidden) closeReveal(); }
+    if (e.code === "Escape") { if (!redoEl.hidden) redoEl.hidden = true; else if (!confirmEl.hidden) confirmEl.hidden = true; else if (!resultEl.hidden) resultEl.hidden = true; else if (!reveal.hidden) { const last = !nextPrize(); closeReveal(); if (last) setTimeout(showResult, 250); } }
   });
   new ResizeObserver(resize).observe(box);
 
