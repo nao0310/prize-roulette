@@ -52,8 +52,13 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   --silver: #dfe2f0;
   --bronze: #e7a56c;
   --red: #ff4d6d; --yellow: #ffd23f; --green: #2fd27a; --blue: #3fa7ff; --purple: #b56bff;
-  --font-display: "Bungee", "Arial Black", system-ui, sans-serif;
-  --font-body: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Meiryo", system-ui, sans-serif;
+  /* 日本語のフォント（Mac・iPhone、Windows、Android・Linux の順）。
+     system-ui や sans-serif に任せると、端末によっては中国語のフォントで漢字が表示される
+     （「骨」「直」「海」などの形が日本語と違う）ので、日本語のフォントを名前で先に指定する */
+  --font-jp: "Hiragino Maru Gothic ProN", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "BIZ UDPGothic", "Yu Gothic UI", "Yu Gothic", YuGothic, "Meiryo",
+    "Noto Sans JP", "Noto Sans CJK JP", "Source Han Sans JP", "IPAexGothic", "IPAPGothic", "IPAGothic", "TakaoPGothic", "VL PGothic";
+  --font-display: "Bungee", "Arial Black", var(--font-jp), sans-serif;
+  --font-body: "M PLUS Rounded 1c", var(--font-jp), sans-serif;
 }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
@@ -130,7 +135,7 @@ header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-i
 .next-body { display: flex; align-items: baseline; gap: 16px; min-width: 0; flex: 1; }
 .next-rank { font-family: var(--font-display); font-size: clamp(38px, 3.6vw, 60px); line-height: 1; color: var(--gold); flex: none; }
 .next-rank small { font-family: var(--font-body); font-size: .42em; font-weight: 800; margin-left: 2px; }
-.next-name { font-size: 40px; font-weight: 800; line-height: 1.2; min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; }
+.next-name { font-size: 40px; font-weight: 800; line-height: 1.2; min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .list-tools { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -193,11 +198,14 @@ button.ball-sm:focus-visible { outline: 3px solid var(--gold); outline-offset: 2
 .reveal {
   position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
   background: rgba(10, 4, 22, .72); cursor: pointer;
+  overflow-x: hidden;   /* 光の放射（.rays）が画面より大きいので、横にずれないよう切る */
+  overflow-y: auto;     /* 画面の高さに収まらないとき（1366×768 など）は縦にスクロールしてボタンまで見られるように */
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
-.reveal-inner { position: relative; display: grid; place-items: center; gap: 10px; padding-inline: 16px; }
+.reveal-inner { position: relative; display: grid; place-items: center; gap: 10px; padding-inline: 16px; margin-block: auto; }   /* 収まらないときは上から表示（上が切れないように） */
+/* 光の放射は画面に固定する（回転する飾りが当選画面のスクロールの範囲に入ると、縦のバーが出たり消えたりして画面が動くため） */
 .rays {
-  position: absolute; width: min(150vw, 900px); aspect-ratio: 1; left: 50%; top: 42%;
+  position: fixed; width: min(150vw, 900px); aspect-ratio: 1; left: 50%; top: 42%;
   transform: translate(-50%, -50%);
   background: repeating-conic-gradient(var(--c) 0 6deg, transparent 6deg 18deg);
   opacity: .28; border-radius: 50%;
@@ -214,6 +222,9 @@ button.ball-sm:focus-visible { outline: 3px solid var(--gold); outline-offset: 2
 .reveal-rank small { font-family: var(--font-body); font-weight: 800; font-size: .45em; margin-left: 4px; }
 .big-ball {
   position: relative; width: min(74vw, 460px, 48vh); aspect-ratio: 1; border-radius: 50%;
+  /* 高さの低い画面（1366×768 の PC・プロジェクターなど）では、長い景品名と下のボタンまで1画面に収まるよう、ボールを小さくする */
+  width: min(74vw, 460px, 48vh, max(180px, calc(100dvh - 440px)));
+  container-type: inline-size;   /* 中の数字をボールの大きさに合わせる */
   background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.6), transparent 42%), var(--c);
   display: grid; place-items: center;
   box-shadow: 0 0 60px var(--c), inset 0 -14px 0 rgba(0,0,0,.18);
@@ -224,8 +235,8 @@ button.ball-sm:focus-visible { outline: 3px solid var(--gold); outline-offset: 2
   display: grid; place-items: center; line-height: .9;
   box-shadow: inset 0 -6px 0 rgba(0,0,0,.08);
 }
-.big-ball .num { font-family: var(--font-display); font-size: min(26vw, 170px, 18vh); font-variant-numeric: tabular-nums; }
-.big-ball .num.three { font-size: min(17vw, 112px, 12vh); }
+.big-ball .num { font-family: var(--font-display); font-size: min(26vw, 170px, 18vh); font-size: 37cqw; font-variant-numeric: tabular-nums; }
+.big-ball .num.three { font-size: min(17vw, 112px, 12vh); font-size: 24.4cqw; }
 @keyframes pop {
   0% { transform: scale(0) rotate(-200deg); }
   100% { transform: scale(1) rotate(0); }
@@ -357,6 +368,8 @@ body.tension .wheel-box { transform: scale(1.035); }
   .next-rank { font-size: 34px; }
   .spin-btn { padding: 10px 40px; }
 }
+/* 幅の狭いスマホ（iPhone SE など）：SPIN ボタンの長い表示（「番号が残っていません」など）が2行にならないよう、左右の余白を詰める */
+@media (max-width: 360px) { .spin-btn { padding-inline: 10px; } }
 /* タッチ操作の端末では「スペースキー」の説明は不要 */
 @media (pointer: coarse) { .hint { display: none; } }
 /* スマホでは当選画面の背景を濃くして、後ろの文字が透けないようにする */
@@ -559,9 +572,20 @@ body.present .list-head h2 { font-size: 14px; }
   // 名簿（任意）：番号 → 名前。抽選には使わず、当選番号に名前を添えて表示するだけ。
   // この端末のブラウザの中だけに置き、どこにも送信しない
   let roster = {}, rosterFile = "";
+  let storedSpin = null;          // 保存データにあった「回し始めた時点で決まっていた当選」{ i: 景品の添字, n: 番号 }
+  let spinSaved = null;           // このタブで回している当選（回っている途中で再読み込みされても引き直しにならないよう保存する）
+  // 保存データ（壊れたもの・別のバージョンのものを含む）は、型と範囲を確かめてから使う
+  const isNum = n => Number.isInteger(n) && n >= 1 && n <= MAX_PEOPLE;
+  const isText = v => typeof v === "string" || typeof v === "number";
   try {
     const r = JSON.parse(localStorage.getItem("prize-wheel-v1-roster") || "null");
-    if (r && r.names && typeof r.names === "object") { roster = r.names; rosterFile = String(r.file || ""); }
+    if (r && r.names && typeof r.names === "object" && !Array.isArray(r.names)) {
+      for (const [k, v] of Object.entries(r.names)) {
+        const n = Number(k), name = isText(v) ? String(v).trim().slice(0, 40) : "";
+        if (isNum(n) && name) roster[n] = name;
+      }
+      rosterFile = typeof r.file === "string" ? r.file : "";
+    }
   } catch (e) {}
   const whoOf = num => (num != null && Object.prototype.hasOwnProperty.call(roster, num)) ? String(roster[num]) : "";
   const hasRoster = () => Object.keys(roster).length > 0;
@@ -569,21 +593,48 @@ body.present .list-head h2 { font-size: 14px; }
   const rosterPeople = () => Math.min(MAX_PEOPLE, Math.max(MIN_PEOPLE, ...Object.keys(roster).map(Number)));
   try {
     const s = JSON.parse(localStorage.getItem(STORE) || "null");
-    if (s) {
-      if (Array.isArray(s.prizes) && s.prizes.length) { prizes = s.prizes; isDummy = !!s.isDummy; }
+    if (s && typeof s === "object") {
+      // 景品：景品名が文字（または数字）のものだけ使う。old→new は当選番号の付け替え用
+      const remap = new Map();
+      if (Array.isArray(s.prizes)) {
+        const list = [];
+        s.prizes.slice(0, MAX_PEOPLE).forEach((p, i) => {
+          const name = p && typeof p === "object" && isText(p.name) ? String(p.name).trim() : "";
+          if (!name) return;
+          const rank = Number(p.rank);
+          remap.set(i, list.length);
+          list.push({ rank: Number.isInteger(rank) && rank >= 0 ? rank : list.length + 1, name });
+        });
+        if (list.length) { prizes = list; isDummy = !!s.isDummy; }
+      }
       if (s.order2 === "top") order = "top";
       if (Number.isInteger(s.people)) N = Math.min(MAX_PEOPLE, Math.max(MIN_PEOPLE, s.people));
-      if (s.wins && typeof s.wins === "object") {
-        for (const [k, v] of Object.entries(s.wins)) if (v >= 1 && v <= N) wins[+k] = v;
-        if (Array.isArray(s.drawOrder)) drawOrder = s.drawOrder.filter(i => wins[i] != null);
-        if (Array.isArray(s.absent)) absent = s.absent.filter(n => n >= 1 && n <= N);
-      } else if (Array.isArray(s.drawn)) legacyDrawn = s.drawn.filter(n => n >= 1 && n <= N);
+      const ok = n => isNum(n) && n <= N;
+      if (s.wins && typeof s.wins === "object" && remap.size) {
+        // 当選番号：整数で範囲内のもの、重複なしに限る（文字の "5" などが混ざると、同じ番号がもう一度出てしまうため）
+        const used = new Set();
+        for (const [k, v] of Object.entries(s.wins)) {
+          const i = remap.get(Number(k)), n = Number(v);
+          if (i == null || !ok(n) || used.has(n)) continue;
+          wins[i] = n; used.add(n);
+        }
+        if (Array.isArray(s.drawOrder)) drawOrder = [...new Set(s.drawOrder.map(i => remap.get(Number(i))))].filter(i => i != null && wins[i] != null);
+        for (const i of Object.keys(wins).map(Number)) if (!drawOrder.includes(i)) drawOrder.push(i);   // 順番が分からない当選も一覧に残す
+        if (Array.isArray(s.absent)) absent = [...new Set(s.absent.map(Number))].filter(n => ok(n) && !used.has(n));
+        // 回し始めた時点で決まっていた当選（回っている途中で再読み込みされたとき用）
+        const ps = s.pendingSpin;
+        if (ps && typeof ps === "object") {
+          const i = remap.get(Number(ps.i)), n = Number(ps.n);
+          if (i != null && wins[i] == null && ok(n) && !used.has(n) && !absent.includes(n)) storedSpin = { i, n };
+        }
+      } else if (Array.isArray(s.drawn)) legacyDrawn = [...new Set(s.drawn.map(Number))].filter(ok);
     }
   } catch (e) {}
   // 抽選の対象になる番号：名簿があれば名簿にある番号だけ、なければ 1〜参加人数 すべて
   const inPool = n => n >= 1 && n <= N && (!hasRoster() || Object.prototype.hasOwnProperty.call(roster, n));
   const poolSize = () => hasRoster() ? Object.keys(roster).filter(k => +k <= N).length : N;
-  const total = () => Math.min(prizes.length, poolSize());
+  // 抽選する景品の数。途中で名簿を読み込んで人数が減っても、当選が決まった景品は外さない
+  const total = () => { let t = poolSize(); for (const k in wins) t = Math.max(t, +k + 1); return Math.min(prizes.length, t); };
   // 抽選順で j 番目に回す景品の添字
   const seqIndex = j => order === "top" ? j : total() - 1 - j;
   if (legacyDrawn) legacyDrawn.slice(0, total()).forEach((num, k) => { const i = seqIndex(k); wins[i] = num; drawOrder.push(i); });
@@ -604,8 +655,12 @@ body.present .list-head h2 { font-size: 14px; }
   let tension = false, lastBeat = 0, beatPulse = 0, beatTimer = null;
   let lastRot = 0, lastNow = 0, speed = 0;
   const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
-  // 最後の数マスをじわじわ進む時間が長くなる減速（5乗）
-  const easeOutQuint = t => 1 - Math.pow(1 - t, 5);
+  // 本回転の動き：はじめの3割は一定の速さで回り、そこから3乗のカーブで減速する（速さはつなぎ目で一致）。
+  // 5乗の減速だと前半で回転のほとんどを終えてしまい、後半の数秒がほぼ止まって見えたため、
+  // 最後まで動きを残しつつ、最後の1〜2マスはじわじわ進むようにしている
+  const CRUISE = 0.3, DECEL = 3, CRUISE_V = 1 / (CRUISE + (1 - CRUISE) / DECEL);
+  const easeSpin = t => t < CRUISE ? CRUISE_V * t
+    : CRUISE_V * CRUISE + CRUISE_V * (1 - CRUISE) / DECEL * (1 - Math.pow(1 - (t - CRUISE) / (1 - CRUISE), DECEL));
   const easeInOutSine = t => -(Math.cos(Math.PI * t) - 1) / 2;
   const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   let lastTickIdx = -1, kick = 0;
@@ -622,7 +677,7 @@ body.present .list-head h2 { font-size: 14px; }
     // 同じ色が固まらないよう、見た目用に並びを混ぜる（抽選結果には影響しない）
     for (let i = wheelNums.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [wheelNums[i], wheelNums[j]] = [wheelNums[j], wheelNums[i]]; }
   }
-  function save() { try { localStorage.setItem(STORE, JSON.stringify({ prizes, isDummy, order2: order, wins, drawOrder, absent, people: N })); } catch (e) {} }
+  function save() { try { localStorage.setItem(STORE, JSON.stringify({ prizes, isDummy, order2: order, wins, drawOrder, absent, people: N, pendingSpin: spinSaved })); } catch (e) {} }
 
   // ---------- サウンド（パチンコ風） ----------
   // 実機の「キュイン音」や大当たり音を参考に、高音を抑えて中低音を厚くし、
@@ -758,6 +813,9 @@ body.present .list-head h2 { font-size: 14px; }
   // ---------- ルーレット描画 ----------
   const canvas = document.getElementById("wheel");
   const ctx = canvas.getContext("2d");
+  // ルーレットの中の文字（「つぎは」「○位」）も日本語のフォントで描く（CSS の --font-jp と同じ並び）
+  const FONT_JP = getComputedStyle(document.documentElement).getPropertyValue("--font-jp").trim().replace(/\s+/g, " ") || "sans-serif";
+  if ("lang" in ctx) ctx.lang = "ja";
   const box = document.getElementById("wheelBox");
   const pointer = document.getElementById("pointer");
   let size = 0, dpr = 1;
@@ -828,9 +886,9 @@ body.present .list-head h2 { font-size: 14px; }
     } else {
       const np = nextPrize();
       if (np) {
-        ctx.font = `800 ${hr * 0.22}px "M PLUS Rounded 1c", sans-serif`;
+        ctx.font = `800 ${hr * 0.22}px "M PLUS Rounded 1c", ${FONT_JP}, sans-serif`;
         ctx.fillText("つぎは", cx, cy - hr * 0.45);
-        ctx.font = `${hr * (np.rank >= 10 ? 0.6 : 0.75)}px Bungee, sans-serif`;
+        ctx.font = `${hr * (np.rank >= 100 ? 0.45 : np.rank >= 10 ? 0.6 : 0.75)}px Bungee, ${FONT_JP}, sans-serif`;
         ctx.fillText(np.rank + "位", cx, cy + hr * 0.12);
       } else {
         ctx.font = `${hr * 0.3}px Bungee, sans-serif`;
@@ -882,9 +940,9 @@ body.present .list-head h2 { font-size: 14px; }
   // ---------- 抽選 ----------
   const spinBtn = document.getElementById("spinBtn");
   /*
-    演出の流れ（合計 約10〜13秒、3位以上はさらに約2秒長い）
+    演出の流れ（11位以下は約6秒、4〜10位は約7.5秒、2・3位は約10.5秒、1位は約13秒）
      1. ため   : 少し逆回転して力をためる
-     2. 本回転 : 一気に加速し、最後の数秒はじわじわ1マスずつ進む
+     2. 本回転 : 一気に加速して一定の速さで回り、そこから減速して最後の1〜2マスはじわじわ進む
      3. 寸止め : 4割は「当たりのマスにギリギリ入って」止まる
      4. 一拍   : 止まってから0.65秒の沈黙のあと発表
   */
@@ -897,6 +955,8 @@ body.present .list-head h2 { font-size: 14px; }
     audio();
     const n = wheelNums.length, seg = TAU / n;
     winIdx = Math.floor(rand() * n);
+    // 当選番号は回し始めた時点で決まっているので、ここで保存しておく（回っている途中で再読み込みしても引き直しにならないように）
+    spinSaved = { i: spinIdx, n: wheelNums[winIdx] }; save();
     const r0 = rotation;
     const top3 = np.rank <= 3;
     const fake = false;   // 行き過ぎて戻ってくる演出は使わない（常に前に進んで止まる）
@@ -908,14 +968,14 @@ body.present .list-head h2 { font-size: 14px; }
                   : np.rank <= 3 ? 9000 + rand() * 1000
                   : np.rank <= 10 ? 6500 + rand() * 800
                   : 5000 + rand() * 700;
-    const turns = reduced ? 1 : Math.max(3, Math.round(mainDur / 1400));
+    const turns = reduced ? 1 : Math.max(5, Math.round(mainDur / 700));
     const landRot = r0 + mod(land - r0, TAU) + TAU * turns;
 
     phases = [];
     if (reduced) {
       phases.push({ from: r0, to: landRot, dur: 1500, ease: easeOutQuart, kind: "main" });
     } else {
-      const back = r0 - seg * 1.2 - 0.15;
+      const back = r0 - Math.min(seg * 1.2, 0.35) - 0.15;   // 人数が少なくマスが大きいときも、逆回転は少しだけにする
       phases.push({ from: r0, to: back, dur: top3 ? 700 : 450, ease: easeInOutSine, kind: "windup" });
       if (fake) {
         const over = landRot + (1 - f + 0.2 + rand() * 0.15) * seg;
@@ -923,7 +983,7 @@ body.present .list-head h2 { font-size: 14px; }
         phases.push({ from: over, to: over, dur: 750, ease: t => t, kind: "hold" });
         phases.push({ from: over, to: landRot, dur: 1400, ease: easeInOutCubic, kind: "back" });
       } else {
-        phases.push({ from: back, to: landRot, dur: mainDur, ease: easeOutQuint, kind: "main" });
+        phases.push({ from: back, to: landRot, dur: mainDur, ease: easeSpin, kind: "main" });
       }
     }
     phaseIdx = 0; phaseStart = performance.now(); lastNow = phaseStart; lastRot = r0;
@@ -954,6 +1014,7 @@ body.present .list-head h2 { font-size: 14px; }
       beatTimer = null;
       wins[spinIdx] = num;
       drawOrder.push(spinIdx);
+      spinSaved = null;
       save();
       renderSide();
       showReveal(num);
@@ -969,7 +1030,7 @@ body.present .list-head h2 { font-size: 14px; }
     const prize = prizes[revealIdx];
     reveal.style.setProperty("--c", colorOf(num));
     const rankEl = document.getElementById("revealRank");
-    rankEl.innerHTML = `${prize.rank}<small>位 当選！</small>`;
+    rankEl.innerHTML = `${esc(prize.rank)}<small>位 当選！</small>`;
     const bigNum = document.getElementById("bigNum");
     bigNum.textContent = num;
     bigNum.classList.toggle("three", num >= 100);
@@ -1043,7 +1104,7 @@ body.present .list-head h2 { font-size: 14px; }
       if (i < 3) topEl.appendChild(resultCard(p, winner[i], true));
       else gridEl.appendChild(resultCard(p, winner[i], false));
     });
-    document.getElementById("resultSub").textContent = `参加 ${N}人 ／ 景品 ${list.length}件` + (absent.length ? ` ／ 不在で外した番号：${absent.join("・")}` : "");
+    document.getElementById("resultSub").textContent = `参加 ${poolSize()}人 ／ 景品 ${list.length}件` + (absent.length ? ` ／ 不在で外した番号：${absent.join("・")}` : "");
     resultEl.hidden = false;
     resultEl.scrollTop = 0;
     replay(document.querySelector(".result-title"));
@@ -1115,13 +1176,15 @@ body.present .list-head h2 { font-size: 14px; }
     const n = total();
     // 列の数（PCは2列、スマホ横向きは1列）に合わせて行数を決める
     const cols = desktop() ? getComputedStyle(listEl).gridTemplateColumns.split(" ").filter(Boolean).length || 1 : 1;
-    listEl.style.gridTemplateRows = desktop() ? `repeat(${Math.ceil(n / cols)}, minmax(32px, 1fr))` : "";
+    // 行の高さは「中身の高さ」以上にする（長い景品名が行からはみ出して、隣の行の順位や当選番号に重ならないように）。
+    // 収まるときは一覧の高さいっぱいに均等に広げ、収まらないときは一覧の中でスクロールする
+    listEl.style.gridTemplateRows = desktop() ? `repeat(${Math.ceil(n / cols)}, minmax(min-content, 1fr))` : "";
   }
 
   function renderSide() {
     const np = nextPrize();
     document.getElementById("nextTitle").textContent = np ? "次の景品" : "抽選終了";
-    document.getElementById("nextRank").innerHTML = np ? `${np.rank}<small>位</small>` : "END";
+    document.getElementById("nextRank").innerHTML = np ? `${esc(np.rank)}<small>位</small>` : "END";
     document.getElementById("nextName").textContent = np ? np.name : "すべての景品の当選番号が決まりました";
     fitNextName();
     layoutList();
@@ -1192,7 +1255,7 @@ body.present .list-head h2 { font-size: 14px; }
       const rc = row.findIndex(v => /^(順位|順番|位|ランク|rank|no\.?|#)$/i.test(v));
       const nc = row.findIndex(v => v.length <= 8 && /^(景品|賞品|商品|品名|prize|name)/i.test(v));
       if (rc >= 0 || nc >= 0) {
-        if (rc >= 0) rankCol = rc;
+        rankCol = rc;   // 見出しに順位の列がなければ順位は読まない（行の順のまま。景品名の中の数字を順位にしない）
         nameCol = nc >= 0 ? nc : (rankCol === 0 ? 1 : 0);
         start = r + 1;
         break;
@@ -1257,20 +1320,11 @@ body.present .list-head h2 { font-size: 14px; }
 
   async function loadFile(file) {
     if (typeof XLSX === "undefined") { setMsg("Excelを読む部品を読み込めませんでした。ページを再読み込みしてから、もう一度試してください。", true); return; }
+    if (busy() || spinning || beatTimer) { setMsg("抽選の途中は景品を変更できません。リセットしてから読み込んでください。", true); return; }
     try {
-      const buf = await file.arrayBuffer();
-      let wb;
-      if (/\.csv$/i.test(file.name)) {
-        // CSVは文字コードを判定してから読む（UTF-8 → だめならExcelで保存したShift_JIS）
-        let text;
-        try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); }
-        catch (e) { text = new TextDecoder("shift_jis").decode(buf); }
-        wb = XLSX.read(text.replace(/^\uFEFF/, ""), { type: "string" });
-      } else {
-        wb = XLSX.read(buf, { type: "array" });
-      }
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, blankrows: false });
-      const list = parseRows(rows);
+      // 名簿と同じく、セルを文字のまま読む（「3/4」が日付の数値に、「0012」が 12 に変わらないように）
+      const list = parseRows(await readRows(file));
+      if (busy() || spinning || beatTimer) return;   // 読んでいる間に抽選が始まったときは変えない
       if (!list.length) { setMsg("景品が見つかりませんでした。A列に順位、B列に景品名を入れたファイルを選んでください。", true); return; }
       prizes = list; isDummy = false; wins = {}; drawOrder = []; absent = [];
       save(); rebuildWheel(); renderSide();
@@ -1372,7 +1426,6 @@ body.present .list-head h2 { font-size: 14px; }
     e.preventDefault();
     const f = e.dataTransfer.files[0];
     if (!f) return;
-    if (busy() || spinning || beatTimer) { setMsg("抽選の途中は景品を変更できません。リセットしてから読み込んでください。", true); return; }
     loadFile(f);
   });
 
@@ -1426,7 +1479,7 @@ body.present .list-head h2 { font-size: 14px; }
   canvas.addEventListener("click", spin);
   document.addEventListener("keydown", e => {
     if ((e.code === "Space" || e.code === "Enter") && !e.target.closest("button, input")) { e.preventDefault(); spin(); }
-    if (e.code === "Escape") { if (!redoEl.hidden) redoEl.hidden = true; else if (!confirmEl.hidden) confirmEl.hidden = true; else if (!resultEl.hidden) resultEl.hidden = true; else if (!reveal.hidden) closeReveal(); }
+    if (e.code === "Escape") { if (!redoEl.hidden) redoEl.hidden = true; else if (!confirmEl.hidden) confirmEl.hidden = true; else if (!resultEl.hidden) resultEl.hidden = true; else if (!reveal.hidden) { const last = !nextPrize(); closeReveal(); if (last) setTimeout(showResult, 250); } }
   });
   new ResizeObserver(resize).observe(box);
 
@@ -1472,6 +1525,15 @@ body.present .list-head h2 { font-size: 14px; }
   renderSound();
   renderSide();
   resize();
+  // 回っている途中で再読み込みされたとき：回し始めた時点で決まっていた当選番号で当選画面を出す（引き直しにしない）
+  if (storedSpin && inPool(storedSpin.n) && storedSpin.i < total() && wins[storedSpin.i] == null) {
+    const { i, n } = storedSpin;
+    wins[i] = n; drawOrder.push(i);
+    save(); rebuildWheel(); renderSide();
+    showReveal(n);
+    document.getElementById("revealCount").textContent = "回転中に再読み込みされたため、回し始めたときに決まっていた当選番号を表示しています";
+  }
+  storedSpin = null;
   requestAnimationFrame(frame);
 })();
 </script>
